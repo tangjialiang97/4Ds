@@ -126,7 +126,6 @@ def get_teacher_name(model_path):
 
 def load_teacher(model_path, n_cls, gpu=None, opt=None):
     print('==> loading teacher model')
-    # model_t = get_teacher_name(model_path)
     model = model_dict[opt.model_t](pretrained=False, num_classes=n_cls)
     map_location = None if gpu is None else {'cuda:0': 'cuda:%d' % (gpu if opt.multiprocessing_distributed else 0)}
     model.load_state_dict(torch.load(model_path, map_location=map_location)['model'])
@@ -180,6 +179,7 @@ def main_worker(gpu, ngpus_per_node, opt):
         numpy.random.seed(12345)
 
     # model
+    # number of classes in the dataset
     n_cls = {
         'digit': 10,
         'office31': 31,
@@ -192,6 +192,7 @@ def main_worker(gpu, ngpus_per_node, opt):
         'domainnet': 345,
     }.get(opt.data_type, None)
 
+    # Create the teacher model
     model_temp = load_teacher(opt.path_t, n_cls, opt.gpu, opt)
 
     model_s = model_dict[opt.model_s](pretrained=True, num_classes=1000)
@@ -209,6 +210,7 @@ def main_worker(gpu, ngpus_per_node, opt):
     model_temp.eval()
     model_s.eval()
 
+    # Extract features from the teacher and student models
     if 'vgg' in opt.model_t:
         feat_s, _ = model_s.extract_feature(data, preReLU=True, model=opt.model_s)
         feat_t, _ = model_temp.extract_feature(data, preReLU=True, model=opt.model_t)
@@ -220,9 +222,10 @@ def main_worker(gpu, ngpus_per_node, opt):
     for feat in feat_t:
         feat_dim.append(feat.shape[1])
 
+    # Add the adapter to the teacher model
     model_t = Merge_model_da(model_temp, feat_dim)
 
-
+    # Freeze the teacher model parameters except for the adapters
     for name, param in model_t.named_parameters():
         if 'adapter' not in name:
             param.requires_grad = False
@@ -236,6 +239,7 @@ def main_worker(gpu, ngpus_per_node, opt):
     criterion_cls = nn.CrossEntropyLoss()
     criterion_div = DistillKL(opt.kd_T)
 
+    # Add the SE model for feature extraction and distillation
     num_channel = 0
     for feat in feat_s[1:-1]:
         num_channel += feat.shape[1]

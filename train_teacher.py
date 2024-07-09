@@ -127,6 +127,7 @@ def main_worker(gpu, ngpus_per_node, opt):
                                 world_size=opt.world_size, rank=opt.rank)
 
     # model
+    # number of classes in the dataset
     n_cls = {
         'digit': 10,
         'office31': 31,
@@ -140,6 +141,7 @@ def main_worker(gpu, ngpus_per_node, opt):
         'domainnet': 345,
     }.get(opt.data_type, None)
     try:
+        # create model
         model = model_dict[opt.model](pretrained=True, num_classes=1000)
         if 'resnet' in opt.model:
             num_features = model.fc.in_features
@@ -189,7 +191,7 @@ def main_worker(gpu, ngpus_per_node, opt):
     else:
         raise NotImplementedError(opt.dataset)
 
-
+    # check data
     chekc_data(train_loader, test_loader)
     # routine
     for epoch in range(1, opt.epochs + 1):
