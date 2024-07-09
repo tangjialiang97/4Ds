@@ -10,8 +10,10 @@ class DistillKL(nn.Module):
         self.T = T
 
     def forward(self, y_s, y_t):
+        # Get soft label distribution
         p_s = F.log_softmax(y_s/self.T, dim=1)
         p_t = F.softmax(y_t/self.T, dim=1)
+        # Compute KL divergence
         loss = nn.KLDivLoss(reduction='batchmean')(p_s, p_t) * (self.T**2)
         return loss
 
@@ -23,5 +25,6 @@ class HintLoss(nn.Module):
         self.crit = nn.MSELoss()
 
     def forward(self, f_s, f_t):
+        # Calculate the MSE between the intermediate layers of the student and teacher
         loss = self.crit(f_s, f_t)
         return loss

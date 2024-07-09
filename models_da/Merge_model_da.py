@@ -3,6 +3,8 @@ from torch.autograd import Variable
 import torch
 import torch.nn.functional as F
 import math
+
+# Configuration for VGG models
 cfg_block = {
         'vgg16_bn': [7, 14, 24, 34, 44],
         'vgg19_bn': [7, 14, 27, 40, 53],
@@ -58,39 +60,14 @@ class Adapter_conv(nn.Module):
         )
 
     def forward(self, x):
-        weight = F.softmax(self.weight / self.T, dim=0)
+
+        weight = F.softmax(self.weight / self.T, dim=0) # Weights of the original and adapted features
         x_adapt = self.fc(x)
-        phase_ori, amp_ori = decompose(x, 'all')
-        phase_adapt, amp_adapt = decompose(x_adapt, 'all')
-        amp = amp_adapt * weight[0] + amp_ori * weight[1]
-        # print('Weights:')
-        # print(weight[0], weight[1])
+        phase_ori, amp_ori = decompose(x, 'all') # Decompose the original feature into phase and amplitude
+        phase_adapt, amp_adapt = decompose(x_adapt, 'all') # Decompose the adapted feature into phase and amplitude
+        amp = amp_adapt * weight[0] + amp_ori * weight[1] # Combine the amplitude of the original and adapted features
 
-        x = compose(phase_ori, amp)
-
-        return x, phase_ori
-
-class Adapter_conv_temp(nn.Module):
-    def __init__(self, c_in, reduction=4):
-        norm_layer = nn.BatchNorm2d
-        super(Adapter_conv_temp, self).__init__()
-        self.weight = nn.Parameter(torch.zeros(2))
-        self.T = 0.1
-        self.fc = nn.Sequential(
-            conv1x1(c_in, c_in // reduction),
-            norm_layer(c_in // reduction),
-            nn.ReLU(inplace=True),
-            conv1x1(c_in // reduction, c_in),
-            norm_layer(c_in),
-        )
-
-    def forward(self, x):
-        weight = F.softmax(self.weight / self.T, dim=0)
-        phase_ori, amp_ori = decompose(x, 'all')
-        amp_adapt = self.fc(amp_ori)
-        amp = amp_adapt * weight[0] + amp_ori * weight[1]
-
-        x = compose(phase_ori, amp)
+        x = compose(phase_ori, amp) # Combine the phase and amplitude to get the final feature
 
         return x, phase_ori
 
@@ -190,181 +167,25 @@ class Merge_model_da(nn.Module):
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
-        # x = self.adapter0(x)
-        f0 = x
 
         x = self.layer1(x)
         x, fo1 = self.adapter1(x)
-        f1 = x
 
         x = self.layer2(x)
         x, fo2 = self.adapter2(x)
-        f2 = x
 
         x = self.layer3(x)
         x, fo3 = self.adapter3(x)
-        f3 = x
 
         x = self.layer4(x)
         x, fo4 = self.adapter4(x)
-        f4 = x
 
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
-        # x = self.adapter5(x)
-        f5 = x
+
         x = self.fc(x)
 
         if is_feat == True:
-            # return [f0, f1, f2, f3, f4, f5], x
             return [fo1, fo2, fo3, fo4], x
         else:
             return x
-
-
-class Adapter_conv_var(nn.Module):
-    def __init__(self, c_in, reduction=4, num_conv=1):
-        norm_layer = nn.BatchNorm2d
-        super(Adapter_conv_var, self).__init__()
-        self.weight = nn.Parameter(torch.zeros(2))
-        self.T = 0.1
-        if num_conv == 1:
-            self.fc = nn.Sequential(
-                conv1x1(c_in, c_in),
-                norm_layer(c_in),
-            )
-        elif num_conv == 2:
-            self.fc = nn.Sequential(
-                conv1x1(c_in, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv1x1(c_in // reduction, c_in),
-                norm_layer(c_in),
-            )
-        elif num_conv == 3:
-            self.fc = nn.Sequential(
-                conv1x1(c_in, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv1x1(c_in // reduction, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv1x1(c_in // reduction, c_in),
-                norm_layer(c_in),
-            )
-        elif num_conv == 4:
-            self.fc = nn.Sequential(
-                conv1x1(c_in, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv1x1(c_in // reduction, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv1x1(c_in // reduction, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv1x1(c_in // reduction, c_in),
-                norm_layer(c_in),
-            )
-        elif num_conv == 5:
-            self.fc = nn.Sequential(
-                conv1x1(c_in, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv1x1(c_in // reduction, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv1x1(c_in // reduction, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv1x1(c_in // reduction, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv1x1(c_in // reduction, c_in),
-                norm_layer(c_in),
-            )
-
-    def forward(self, x):
-        weight = F.softmax(self.weight / self.T, dim=0)
-        x_adapt = self.fc(x)
-        phase_ori, amp_ori = decompose(x, 'all')
-        phase_adapt, amp_adapt = decompose(x_adapt, 'all')
-        amp = amp_adapt * weight[0] + amp_ori * weight[1]
-
-        x = compose(phase_ori, amp)
-
-        return x, phase_ori
-
-
-class Adapter_conv_var3x3(nn.Module):
-    def __init__(self, c_in, reduction=4, num_conv=1):
-        norm_layer = nn.BatchNorm2d
-        super(Adapter_conv_var3x3, self).__init__()
-        self.weight = nn.Parameter(torch.zeros(2))
-        self.T = 0.1
-        if num_conv == 1:
-            self.fc = nn.Sequential(
-                conv3x3(c_in, c_in),
-                norm_layer(c_in),
-            )
-        elif num_conv == 2:
-            self.fc = nn.Sequential(
-                conv3x3(c_in, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv3x3(c_in // reduction, c_in),
-                norm_layer(c_in),
-            )
-        elif num_conv == 3:
-            self.fc = nn.Sequential(
-                conv3x3(c_in, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv3x3(c_in // reduction, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv3x3(c_in // reduction, c_in),
-                norm_layer(c_in),
-            )
-        elif num_conv == 4:
-            self.fc = nn.Sequential(
-                conv3x3(c_in, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv3x3(c_in // reduction, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv3x3(c_in // reduction, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv3x3(c_in // reduction, c_in),
-                norm_layer(c_in),
-            )
-        elif num_conv == 5:
-            self.fc = nn.Sequential(
-                conv3x3(c_in, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv3x3(c_in // reduction, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv3x3(c_in // reduction, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv3x3(c_in // reduction, c_in // reduction),
-                norm_layer(c_in // reduction),
-                nn.ReLU(inplace=True),
-                conv3x3(c_in // reduction, c_in),
-                norm_layer(c_in),
-            )
-
-    def forward(self, x):
-        weight = F.softmax(self.weight / self.T, dim=0)
-        x_adapt = self.fc(x)
-        phase_ori, amp_ori = decompose(x, 'all')
-        phase_adapt, amp_adapt = decompose(x_adapt, 'all')
-        amp = amp_adapt * weight[0] + amp_ori * weight[1]
-
-        x = compose(phase_ori, amp)
-
-        return x, phase_ori

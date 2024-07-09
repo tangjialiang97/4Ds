@@ -17,11 +17,13 @@ def train_distill_adapter(epoch, train_loader, module_list, criterion_list, opti
     for module in module_list:
         module.train()
 
-
+    # set criterion for classification and distillation
     criterion_cls = criterion_list[0]
     criterion_div = criterion_list[1]
+
     model_s = module_list[0]
     model_t = module_list[-1]
+
     if opt.distill == 'orikd_sg':
         se = module_list[1]
         criterion_kd_ori_me = HintLoss()
@@ -50,10 +52,12 @@ def train_distill_adapter(epoch, train_loader, module_list, criterion_list, opti
             logit_s = model_s(images)
             logit_t = model_t(images)
         else:
+            # Extract features from the student and teacher
             feats_ori_s, logit_s = model_s.extract_feature_ori(images, preReLU=True)
             feats_ori_t, logit_t = model_t(images, is_feat=True)
 
 
+        # Calculate the loss for the adapters in the teacher
         loss_kd_t = criterion_div(logit_t, Variable(logit_s))
         loss_cls_t = criterion_cls(logit_t, labels)
         loss_t = loss_cls_t * opt.cls + loss_kd_t * opt.div
@@ -68,7 +72,7 @@ def train_distill_adapter(epoch, train_loader, module_list, criterion_list, opti
             print('Train Teacher- Epoch %d, Batch: %d, Loss_cls: %f, Loss_kd: %f, Loss: %f' % (
                 epoch, idx, loss_cls_t.data.item(), loss_kd_t.data.item(), loss_t.data.item()))
 
-        # other kd loss
+        # Calculate the loss for the student
         if opt.distill == 'kd':
             # cls + kl div
             loss_cls = criterion_cls(logit_s, labels)

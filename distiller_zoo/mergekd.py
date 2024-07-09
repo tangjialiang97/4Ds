@@ -24,11 +24,14 @@ class SELayer(nn.Module):
         )
 
     def forward(self, x):
+        # x is a list of features, each feature in the list with various shape
         feat0 = x[0]
         feat1 = x[1]
         feat2 = x[2]
         feat3 = x[3]
         _, _, h, w = feat3.size()
+
+        # Average pooling, the features feat0, feat1, feat2 are resized to the same size as feat3
         Avg_pool = nn.AdaptiveAvgPool2d((h, w))
         feat0 = Avg_pool(feat0)
         feat1 = Avg_pool(feat1)
@@ -36,6 +39,8 @@ class SELayer(nn.Module):
 
         feat = torch.cat((feat0, feat1, feat2, feat3), 1)
         b, c, _, _ = feat.size()
+
+        # Calculate the weights
         y = self.avg_pool(feat).view(b, c)
         y = self.fc(y).view(b, c, 1, 1)
         return feat * y.expand_as(feat)
@@ -52,11 +57,15 @@ class SELayer_Single(nn.Module):
         )
 
     def forward(self, x_S, x_T):
+        # x_S is a list of features from the student, each feature in the list with various shape
+        # x_T is a list of features from the teacher, each feature in the list with various shape
         feat0_T = x_T[0]
         feat1_T = x_T[1]
         feat2_T = x_T[2]
         feat3_T = x_T[3]
         _, _, h, w = feat3_T.size()
+
+        # Average pooling, the features feat0_T, feat1_T, feat2_T are resized to the same size as feat3_T
         Avg_pool = nn.AdaptiveAvgPool2d((h, w))
         feat0_T = Avg_pool(feat0_T)
         feat1_T = Avg_pool(feat1_T)
@@ -76,46 +85,15 @@ class SELayer_Single(nn.Module):
         feat_T = torch.cat((feat0_T, feat1_T, feat2_T, feat3_T), 1)
         feat_S = torch.cat((feat0_S, feat1_S, feat2_S, feat3_S), 1)
 
+        # Calculate the weights from the teacher
         b, c, _, _ = feat_T.size()
         y = self.avg_pool(feat_T).view(b, c)
         y = self.fc(y).view(b, c, 1, 1)
 
         return feat_S * y.expand_as(feat_S), feat_T * y.expand_as(feat_T)
 
-class SELayer_Each(nn.Module):
-    def __init__(self, blocks=4, channels=[], reduction=16):
-        super(SELayer_Each, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        for i in range(blocks):
-            setattr(self, 'fc{}'.format(i), nn.Sequential(
-                nn.Linear(channels[i], channels[i] // reduction, bias=False),
-                nn.ReLU(inplace=True),
-                nn.Linear(channels[i] // reduction, channels[i], bias=False),
-                nn.Sigmoid()
-            ))
-
-    def forward(self, x_T):
-        weights = []
-        feat0_T = x_T[0]
-        feat1_T = x_T[1]
-        feat2_T = x_T[2]
-        feat3_T = x_T[3]
-
-        features = [feat0_T, feat1_T, feat2_T, feat3_T]
-        fc_layers = [self.fc0, self.fc1, self.fc2, self.fc3]
-
-        for i in range(len(x_T)):
-            feat = features[i]
-            fc = fc_layers[i]
-            b, c, _, _ = feat.size()
-            y = self.avg_pool(feat).view(b, c)
-            y = fc(y).view(b, c, 1, 1)
-            weights.append(y)
-
-        return weights
 
 class BlockHintLoss(nn.Module):
-    """Fitnets: hints for thin deep nets, ICLR 2015"""
     def __init__(self):
         super(BlockHintLoss, self).__init__()
         self.crit = nn.MSELoss()
@@ -123,6 +101,7 @@ class BlockHintLoss(nn.Module):
     def forward(self, f_s, f_t, weights=None):
 
         loss = 0
+        # Calculate the MSE between the intermediate layers of the student and teacher
         for i in range(len(f_s)):
             f_s[i] = f_s[i] * weights[i].expand_as(f_s[i])
             f_t[i] = f_t[i] * weights[i].expand_as(f_t[i])
