@@ -42,7 +42,16 @@ python train_student.py --path_t ./save/teachers/models_DA/domainnet/***.pth --m
 --learning_rate 0.01 --epochs 120 --lr_decay_epochs 40,70,100 --weight_decay 5e-4 --trial 0 --gpu_id 0 \
 --data_type domainnet --dataset Painting --t_dataset Clipart
 ```
+## Cite this repository
 
+If you use this software or the associated data in your research, please cite it as follows:
+@article{tang2024direct,<br>
+  title={Direct Distillation between Different Domains},<br>
+  author={Tang, Jialiang and Chen, Shuo and Niu, Gang and Zhu, Hongyuan and Zhou, Joey Tianyi and Gong, Chen and Sugiyama, Masashi},<br>
+  journal={arXiv preprint arXiv:2401.06826},<br>
+  year={2024}<br>
+}
+### 
 
 
 
