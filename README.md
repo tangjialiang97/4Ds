@@ -43,15 +43,15 @@ python train_student.py --path_t ./save/teachers/models_DA/domainnet/***.pth --m
 --data_type domainnet --dataset Painting --t_dataset Clipart
 ```
 ## Cite this repository
-
+```bash
 If you use this software or the associated data in your research, please cite it as follows:
-@article{tang2024direct,<br>
-  title={Direct Distillation between Different Domains},<br>
+@article{tang2024direct,
+  title={Direct Distillation between Different Domains},
   author={Tang, Jialiang and Chen, Shuo and Niu, Gang and Zhu, Hongyuan and Zhou, Joey Tianyi and Gong, Chen and Sugiyama, Masashi},<br>
-  journal={arXiv preprint arXiv:2401.06826},<br>
-  year={2024}<br>
+  journal={arXiv preprint arXiv:2401.06826},
+  year={2024}
 }
-### 
+```
 
 
 
