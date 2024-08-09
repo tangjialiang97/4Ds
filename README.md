@@ -15,13 +15,6 @@ This repository aims to provide a compact and easy-to-use implementation of our 
 ```bash
 # Office-Home
 python train_teacher.py --batch_size 64 --epochs 120 --data_type officehome --model resnet34 --learning_rate 0.01 --epochs 120 --lr_decay_epochs 40,70,100 --weight_decay 5e-4 --trial 0 --gpu_id 0
-If you use this software or the associated data in your research, please cite it as follows:
-@article{tang2024direct,<br>
-  title={Direct Distillation between Different Domains},<br>
-  author={Tang, Jialiang and Chen, Shuo and Niu, Gang and Zhu, Hongyuan and Zhou, Joey Tianyi and Gong, Chen and Sugiyama, Masashi},<br>
-  journal={arXiv preprint arXiv:2401.06826},<br>
-  year={2024}<br>
-}
 ### 
 # DomainNet
 python train_teacher.py --batch_size 64 --epochs 120 --data_type domainnet --model resnet34 --learning_rate 0.01 --epochs 120 --lr_decay_epochs 40,70,100 --weight_decay 5e-4 --trial 0 --gpu_id 0
